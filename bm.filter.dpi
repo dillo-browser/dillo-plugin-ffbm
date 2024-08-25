@@ -37,11 +37,13 @@ printf "<!DOCTYPE html>\n<html>\n<head>\n"
 printf "<title>Bookmarks</title>\n"
 printf "<style>\n"
 cat << EOF
+html {
+	background-color: white
+}
 body {
 	margin: 2em;
 	font-size: 15px;
 	line-height: 1.5em;
-	background-color: white
 }
 EOF
 printf "</style>\n"
