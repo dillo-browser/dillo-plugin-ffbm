@@ -1,0 +1,52 @@
+#!/bin/bash
+# Copyright (c) 2024 Rodrigo Arias Mallo
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+IFS= read -d '>' auth # Ignore auth
+IFS= read -d '>' cmd
+
+set -e # Stop on first error
+
+add_bookmark() {
+  printf "<cmd='chat' msg='Hi browser' '>\n"; IFS= read -d '>' cmd
+  printf "<cmd='chat' msg='Is it worth it' '>\n"; IFS= read -d '>' cmd
+  printf "<cmd='chat' msg='Ok, send it' '>\n"; IFS= read -d '>' cmd
+
+  case "$cmd" in
+    "<cmd='add_bookmark' url='"*);;
+    *) echo $cmd >&2; exit;;
+  esac
+
+  cut=${cmd#"<cmd='add_bookmark' url='"}
+  url=$(echo "$cut" | sed "s/' title=.*//" | sed "s/''/'/g")
+  title=$(echo "$cut" | sed "s/.*' title='//;s/' '$//" | sed "s/''/'/g")
+  ffsclient bookmarks create bookmark "$title" "$url"
+  printf "<cmd='send_status_message' msg='Bookmark added' '>\n"
+  exit
+}
+
+case "$cmd" in
+  "<cmd='open_url' url='"*);;
+  "<cmd='chat' msg='Hi server'"*) add_bookmark;;
+  *) echo $cmd >&2; exit;;
+esac
+
+printf "<cmd='start_send_page' url='' '>\n"
+printf "Content-type: text/html\r\n\r\n"
+printf "<!DOCTYPE html>\n<html>\n<head>\n"
+printf "<title>Bookmarks</title>\n"
+printf "<style>\n"
+cat << EOF
+body {
+	margin: 2em;
+	font-size: 15px;
+	line-height: 1.5em;
+	background-color: white
+}
+EOF
+printf "</style>\n"
+printf "</head><body>\n"
+ffsclient bookmarks list --format netscape |\
+  sed 's/<DL>/<UL>/g;s/<DT>/<LI>/g;s_</DL>_</UL>_g;s_</DT>_</LI>_g' |\
+  awk '/^<TITLE>/ { p=1; next } p { print } { next }'
+printf "</body>\n"
